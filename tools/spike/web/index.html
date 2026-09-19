@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>merge spike</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 1.5rem;
+      }
+      pre {
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>merge spike harness</h1>
+    <p>
+      Throwaway measurement page. Pick two fixture zips, choose a sink, run. Driven by
+      <code>tools/spike/run.ts</code> in CI-style runs; usable by hand too.
+    </p>
+    <label>A <input id="fileA" type="file" accept=".zip" /></label>
+    <label>B <input id="fileB" type="file" accept=".zip" /></label>
+    <label>
+      sink
+      <select id="sink">
+        <option value="opfs">opfs (streamed to disk)</option>
+        <option value="blob">blob (in memory)</option>
+        <option value="discard">discard (count bytes only)</option>
+      </select>
+    </label>
+    <button id="run" type="button">run</button>
+    <pre id="log"></pre>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

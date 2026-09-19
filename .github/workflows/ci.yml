@@ -1,0 +1,28 @@
+# Quality gates on every push and pull request:
+#   npm run check = typecheck + lint + unit tests + build
+#
+# Deploys are NOT done here. Cloudflare's git integration (Workers Builds)
+# builds `main` with the same `npm run check` and deploys the assets-only
+# Worker, so a red gate never reaches the live site.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run check

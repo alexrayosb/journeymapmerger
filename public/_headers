@@ -1,0 +1,17 @@
+# Response headers for every static asset served by the Worker.
+# Format: https://developers.cloudflare.com/workers/static-assets/headers/
+#
+# CSP notes:
+# - No third-party scripts, styles, or fonts, ever. Everything is same-origin.
+# - img-src allows blob:/data: for decoded tile bitmaps and Vite-inlined
+#   small assets. worker-src allows blob: because zip.js may spin up its
+#   internal workers from blob URLs.
+# - connect-src 'self' only: the app must never talk to anything but its own
+#   origin. This header is part of the "nothing leaves your browser" promise;
+#   the end-to-end tests check it from the network layer.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

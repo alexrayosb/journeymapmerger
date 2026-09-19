@@ -1,0 +1,35 @@
+# OS junk
+.DS_Store
+
+# Secrets and local-only env files
+.env
+.env.*
+.dev.vars
+
+# Node / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+
+# Generated test fixtures (regenerate with `npm run fixtures`) and spike output
+fixtures/
+tools/spike/results/
+
+# Test runners
+test-results/
+playwright-report/
+coverage/
+
+# Owner's private planning notes and assistant config live next to the code
+# but are never published. Only the site's own files belong in this repo.
+CLAUDE.md
+CLAUDE.local.md
+PLAN.md
+NOTES.md
+HANDBOOK.md
+RETROSPECTIVE.md
+.claude/
+.local/

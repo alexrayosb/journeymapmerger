@@ -1,0 +1,23 @@
+/**
+ * Wrangler configuration for JourneyMapMerger.
+ *
+ * This is an ASSETS-ONLY Worker: no `main`, no bindings, no code runs at the
+ * edge. Cloudflare serves the files in `dist/` (Vite's build output).
+ * Static-asset requests are free and unlimited (verified 2026-09-19 against
+ * developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
+ *
+ * Deploys: Cloudflare's git integration (Workers Builds) builds every push to
+ * `main` with `npm run check` and runs `npx wrangler deploy`. The Worker in
+ * the Cloudflare dashboard must be named exactly `journeymapmerger`, or the
+ * build fails. Rollback = "Rollback" on a previous version in the dashboard.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "journeymapmerger",
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+}
