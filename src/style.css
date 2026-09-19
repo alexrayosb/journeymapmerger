@@ -77,3 +77,49 @@ h1 {
   cursor: default;
   opacity: 0.5;
 }
+
+.howto {
+  margin: 0 0 1.5rem;
+}
+
+.howto summary {
+  cursor: pointer;
+}
+
+.howto p,
+.merge-form .hint {
+  color: var(--fg-muted);
+}
+
+.merge-form .hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.merge-form progress {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.warning {
+  border-left: 3px solid #c58a1a;
+  padding: 0.25rem 0.75rem;
+  margin: 1rem 0;
+}
+
+.summary {
+  border-top: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
+}
+
+.summary h2 {
+  font-size: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.summary h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+}

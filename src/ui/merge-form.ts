@@ -1,207 +1,260 @@
 /**
- * Minimal merge form: two file pickers, map-folder choice per side, who
- * wins on overlap, a merge button, progress and result text. Thin shell
- * over the pipeline; all strings plain and terse.
+ * The merge form: two map pickers, who wins on overlap, merge with
+ * progress and cancel, a size warning for browsers that build the file in
+ * memory, and a result with keep-a-backup install steps. Thin shell over
+ * the pipeline; every string plain and terse.
+ *
+ * Test hooks in the query string (harmless for users):
+ *   ?save=download   skip the save dialog, use the in-memory download path
+ *   ?limit=<bytes>   override the size above which the in-memory path warns
  */
-import { detectWorldRoots } from '../merge/detect.ts';
 import { buildMergePlan } from '../merge/plan.ts';
-import type { Priority, WorldRoot } from '../merge/types.ts';
+import type { MergePlan, Priority } from '../merge/types.ts';
 import { indexWorld } from '../merge/world-index.ts';
 import { CompositorPool } from '../workers/pool.ts';
-import { executeMergePlan } from '../workers/pipeline.ts';
-import { ArchiveError, openArchive, type Archive } from '../zip/reader.ts';
-import { pickSaveTarget } from '../zip/save.ts';
+import { executeMergePlan, type MergeResult } from '../workers/pipeline.ts';
+import type { ArchiveEntry } from '../zip/reader.ts';
+import { canStreamToDisk, pickSaveTarget, type SaveTarget } from '../zip/save.ts';
 import { ArchiveWriter } from '../zip/writer.ts';
+import { el } from './dom.ts';
+import { formatBytes, formatInt } from './format.ts';
+import { renderInstructions } from './instructions.ts';
+import { createSidePicker } from './side-picker.ts';
 
-interface SideState {
-  file: File | null;
-  archive: Archive | null;
-  roots: WorldRoot[];
-  chosen: WorldRoot | null;
-}
-
-const el = <K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> & { className?: string } = {},
-  children: (Node | string)[] = [],
-): HTMLElementTagNameMap[K] => {
-  const node = document.createElement(tag);
-  Object.assign(node, props);
-  node.append(...children);
-  return node;
-};
-
-const formatBytes = (n: number): string =>
-  n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6)).toString()} MB`;
-
-const rootLabel = (root: WorldRoot): string => {
-  const name = root.name === '' ? 'zip root' : root.name;
-  return `${name} (${String(root.tiles)} tiles, ${String(root.waypoints)} waypoints)`;
-};
+const DEFAULT_IN_MEMORY_WARN_BYTES = 1e9;
 
 export function mountMergeForm(container: HTMLElement): void {
-  const sides: Record<'a' | 'b', SideState> = {
-    a: { file: null, archive: null, roots: [], chosen: null },
-    b: { file: null, archive: null, roots: [], chosen: null },
-  };
-  const forceDownload = new URLSearchParams(location.search).get('save') === 'download';
+  const params = new URLSearchParams(location.search);
+  const forceDownload = params.get('save') === 'download';
+  const limitParam = Number(params.get('limit'));
+  const warnAbove =
+    Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_IN_MEMORY_WARN_BYTES;
 
-  const status = el('p', { className: 'status' });
-  const mergeButton = el('button', { type: 'button', textContent: 'Merge' });
-  mergeButton.disabled = true;
+  const sideA = createSidePicker(
+    'a',
+    'Map A',
+    'Usually your own map. The merged folder gets this map folder’s name.',
+  );
+  const sideB = createSidePicker('b', 'Map B', 'The other player’s map.');
 
-  const priority = el('select', { id: 'priority' }, [
-    el('option', { value: 'auto', textContent: 'Newer tile wins (by file date)' }),
-    el('option', { value: 'a', textContent: 'Map A wins where both explored' }),
-    el('option', { value: 'b', textContent: 'Map B wins where both explored' }),
+  const priority = el('select', { id: 'priority', testId: 'priority' }, [
+    el('option', { value: 'auto', textContent: 'The newer tile wins, by file date' }),
+    el('option', { value: 'a', textContent: 'Map A wins' }),
+    el('option', { value: 'b', textContent: 'Map B wins' }),
   ]);
+
+  const mergeButton = el('button', { type: 'button', textContent: 'Merge', testId: 'merge' });
+  const cancelButton = el('button', {
+    type: 'button',
+    textContent: 'Cancel',
+    hidden: true,
+    testId: 'cancel',
+  });
+  const progress = el('progress', { hidden: true, testId: 'progress' });
+  const status = el('p', { className: 'status', testId: 'status' });
+  status.setAttribute('role', 'status');
+
+  const warningText = el('p');
+  const continueButton = el('button', {
+    type: 'button',
+    textContent: 'Continue',
+    testId: 'continue',
+  });
+  const backButton = el('button', { type: 'button', textContent: 'Back' });
+  const warning = el('div', { className: 'warning', hidden: true, testId: 'warning' }, [
+    warningText,
+    el('p', {}, [continueButton, ' ', backButton]),
+  ]);
+
+  const summary = el('section', { className: 'summary', hidden: true, testId: 'summary' });
+
+  let running = false;
+  let controller: AbortController | null = null;
 
   const setStatus = (text: string): void => {
     status.textContent = text;
   };
 
-  const refreshButton = (): void => {
-    mergeButton.disabled = !(sides.a.chosen && sides.b.chosen);
+  const ready = (): boolean =>
+    Boolean(sideA.state.archive && sideA.state.chosen && sideB.state.archive && sideB.state.chosen);
+
+  const refresh = (): void => {
+    mergeButton.disabled = running || !ready();
+    sideA.setDisabled(running);
+    sideB.setDisabled(running);
+    priority.disabled = running;
+  };
+  sideA.onChange(refresh);
+  sideB.onChange(refresh);
+
+  const hideWarning = (): void => {
+    warning.hidden = true;
   };
 
-  const sideBlock = (side: 'a' | 'b'): HTMLElement => {
-    const state = sides[side];
-    const input = el('input', { type: 'file', accept: '.zip,application/zip', id: `file-${side}` });
-    const info = el('p', { className: 'side-info' });
-    const rootSelect = el('select', { id: `root-${side}`, hidden: true });
-
-    rootSelect.addEventListener('change', () => {
-      state.chosen = state.roots[Number(rootSelect.value)] ?? null;
-      refreshButton();
+  const buildPlan = (): MergePlan<ArchiveEntry> | null => {
+    const { archive: a, chosen: rootA } = sideA.state;
+    const { archive: b, chosen: rootB } = sideB.state;
+    if (!a || !b || !rootA || !rootB) return null;
+    return buildMergePlan(indexWorld(a.entries, rootA), indexWorld(b.entries, rootB), {
+      priority: priority.value as Priority,
     });
+  };
 
-    input.addEventListener('change', () => {
-      void (async () => {
-        state.file = input.files?.[0] ?? null;
-        state.chosen = null;
-        state.roots = [];
-        rootSelect.hidden = true;
-        rootSelect.replaceChildren();
-        refreshButton();
-        if (state.archive) {
-          await state.archive.close();
-          state.archive = null;
-        }
-        if (!state.file) {
-          info.textContent = '';
-          return;
-        }
-        info.textContent = 'Reading…';
-        try {
-          state.archive = await openArchive(state.file, state.file.name);
-        } catch (err) {
-          info.textContent =
-            err instanceof ArchiveError ? err.message : 'Could not read this file.';
-          return;
-        }
-        state.roots = detectWorldRoots(state.archive.entries);
-        if (state.roots.length === 0) {
-          info.textContent = 'No JourneyMap map data found in this zip.';
-          return;
-        }
-        state.chosen = state.roots[0] ?? null;
-        if (state.roots.length === 1 && state.chosen) {
-          info.textContent = `Map folder ${rootLabel(state.chosen)}`;
-        } else {
-          info.textContent = 'Several map folders found. Pick one.';
-          rootSelect.replaceChildren(
-            ...state.roots.map((root, i) =>
-              el('option', { value: String(i), textContent: rootLabel(root) }),
-            ),
-          );
-          rootSelect.hidden = false;
-        }
-        refreshButton();
-      })();
-    });
+  const showSummary = (
+    plan: MergePlan<ArchiveEntry>,
+    result: MergeResult,
+    fileName: string,
+  ): void => {
+    const { summary: s } = plan;
+    const tiles = s.tilesCopied + s.tilesComposited;
+    const root = plan.outputRoot;
+    const lines: (Node | string)[] = [
+      el('h2', { textContent: 'Done' }),
+      el('p', {
+        textContent:
+          `Saved ${fileName}. ${formatInt(tiles)} tiles, ${formatInt(result.composited)} of them combined from both maps. ` +
+          `${formatInt(s.waypoints)} waypoints. ${s.dims.length === 1 ? 'Dimension' : 'Dimensions'} ${s.dims.join(', ')}.`,
+      }),
+    ];
+    if (result.compositeFailures.length > 0) {
+      lines.push(
+        el('p', {
+          className: 'hint',
+          textContent: `${formatInt(result.compositeFailures.length)} tiles could not be combined and were copied from the newer map.`,
+        }),
+      );
+    }
+    lines.push(
+      el('h3', { textContent: 'Use it in the game' }),
+      el('ol', {}, [
+        el('li', { textContent: 'Quit Minecraft.' }),
+        el('li', {
+          textContent: `Open journeymap/data/mp/ and rename your current folder to keep it as a backup, for example ${root}-backup.`,
+        }),
+        el('li', {
+          textContent: `Extract the zip into journeymap/data/mp/. The merged folder is named ${root}. If your own folder had a different name, rename the merged folder to match it.`,
+        }),
+        el('li', {
+          textContent:
+            'Start the game. If anything looks wrong, delete the merged folder and give the backup its old name back.',
+        }),
+      ]),
+    );
+    summary.replaceChildren(...lines);
+    summary.hidden = false;
+  };
 
-    return el('fieldset', {}, [
-      el('legend', { textContent: `Map ${side.toUpperCase()}` }),
-      el('label', { htmlFor: `file-${side}`, textContent: 'Zip file ' }),
-      input,
-      info,
-      rootSelect,
-    ]);
+  const runMerge = async (
+    plan: MergePlan<ArchiveEntry>,
+    target: SaveTarget,
+    fileName: string,
+  ): Promise<void> => {
+    const { archive: a } = sideA.state;
+    const { archive: b } = sideB.state;
+    if (!a || !b) return;
+    running = true;
+    controller = new AbortController();
+    refresh();
+    summary.hidden = true;
+    progress.max = plan.tasks.length;
+    progress.value = 0;
+    progress.hidden = false;
+    cancelButton.hidden = false;
+    setStatus(
+      `Merging ${formatInt(plan.tasks.length)} entries, about ${formatBytes(plan.summary.estimatedOutputBytes)}.`,
+    );
+
+    const writer = new ArchiveWriter(target.writerTarget);
+    const pool = new CompositorPool();
+    let lastPaint = 0;
+    try {
+      const result = await executeMergePlan(plan, { a, b }, writer, {
+        compositor: pool,
+        signal: controller.signal,
+        onProgress: (p) => {
+          const now = performance.now();
+          if (now - lastPaint > 100 || p.done === p.total) {
+            lastPaint = now;
+            progress.value = p.done;
+            setStatus(`Merging ${formatInt(p.done)} of ${formatInt(p.total)} entries.`);
+          }
+        },
+      });
+      setStatus('Finishing the file.');
+      const closed = await writer.close();
+      await target.finish(closed);
+      setStatus('');
+      showSummary(plan, result, fileName);
+    } catch (err) {
+      await target.abort();
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setStatus('Cancelled. No file was saved.');
+      } else {
+        setStatus(
+          `Merge failed. ${err instanceof Error ? err.message : String(err)} No file was saved.`,
+        );
+      }
+    } finally {
+      pool.dispose();
+      running = false;
+      controller = null;
+      progress.hidden = true;
+      cancelButton.hidden = true;
+      refresh();
+    }
+  };
+
+  const start = async (confirmedLarge: boolean): Promise<void> => {
+    const plan = buildPlan();
+    if (!plan || running) return;
+    hideWarning();
+    const fileName = `${plan.outputRoot}-merged.zip`;
+    const inMemory = forceDownload || !canStreamToDisk();
+    if (inMemory && !confirmedLarge && plan.summary.estimatedOutputBytes > warnAbove) {
+      warningText.textContent =
+        `This merge is about ${formatBytes(plan.summary.estimatedOutputBytes)}. ` +
+        'Your browser builds the whole file in memory before saving it, which can fail above about 1 GB. ' +
+        'Chrome and Edge save straight to disk instead. Use a normal window, not a private one. Continue anyway?';
+      warning.hidden = false;
+      return;
+    }
+    // The save dialog needs the click’s user activation: this is the first await.
+    const target = await pickSaveTarget(fileName, { forceDownload });
+    if (!target) {
+      setStatus('Cancelled.');
+      return;
+    }
+    await runMerge(plan, target, fileName);
   };
 
   mergeButton.addEventListener('click', () => {
-    void (async () => {
-      const { a, b } = sides;
-      if (!a.archive || !b.archive || !a.chosen || !b.chosen) return;
-      const plan = buildMergePlan(
-        indexWorld(a.archive.entries, a.chosen),
-        indexWorld(b.archive.entries, b.chosen),
-        {
-          priority: priority.value as Priority,
-        },
-      );
-      const suggestedName = `${plan.outputRoot}-merged.zip`;
-
-      // First await in the handler: the save dialog needs the click's user activation.
-      const target = await pickSaveTarget(suggestedName, { forceDownload });
-      if (!target) {
-        setStatus('Cancelled.');
-        return;
-      }
-
-      mergeButton.disabled = true;
-      const { summary } = plan;
-      setStatus(
-        `Merging ${String(plan.tasks.length)} entries, about ${formatBytes(summary.estimatedOutputBytes)}.`,
-      );
-      const writer = new ArchiveWriter(target.writerTarget);
-      const pool = new CompositorPool();
-      try {
-        const result = await executeMergePlan(plan, { a: a.archive, b: b.archive }, writer, {
-          compositor: pool,
-          onProgress: (p) => {
-            if (p.done % 50 === 0 || p.done === p.total) {
-              setStatus(`Written ${String(p.done)} of ${String(p.total)} entries.`);
-            }
-          },
-        });
-        const closed = await writer.close();
-        await target.finish(closed);
-        const tiles = summary.tilesCopied + summary.tilesComposited;
-        const failed = result.compositeFailures.length;
-        setStatus(
-          `Done. ${String(tiles)} tiles (${String(result.composited)} combined), ` +
-            `${String(summary.waypoints)} waypoints, saved as ${suggestedName}.` +
-            (failed > 0
-              ? ` ${String(failed)} tiles could not be combined and were copied from the newer map.`
-              : ''),
-        );
-      } catch (err) {
-        await target.abort();
-        setStatus(`Merge failed. ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        pool.dispose();
-        refreshButton();
-      }
-    })();
+    void start(false);
+  });
+  continueButton.addEventListener('click', () => {
+    void start(true);
+  });
+  backButton.addEventListener('click', hideWarning);
+  cancelButton.addEventListener('click', () => {
+    controller?.abort();
   });
 
-  container.append(
-    el('form', { className: 'merge-form' }, [
-      sideBlock('a'),
-      sideBlock('b'),
-      el('p', {}, [
-        el('label', {
-          htmlFor: 'priority',
-          textContent: 'Where both maps explored the same area ',
-        }),
-        priority,
-      ]),
-      el('p', {}, [mergeButton]),
-      status,
+  const form = el('form', { className: 'merge-form' }, [
+    renderInstructions(),
+    sideA.element,
+    sideB.element,
+    el('p', {}, [
+      el('label', { htmlFor: 'priority', textContent: 'Where both maps explored the same area ' }),
+      priority,
     ]),
-  );
-  container.querySelector('form')?.addEventListener('submit', (e) => {
+    el('p', { className: 'actions' }, [mergeButton, ' ', cancelButton]),
+    warning,
+    progress,
+    status,
+    summary,
+  ]);
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
   });
+  container.append(form);
+  refresh();
 }

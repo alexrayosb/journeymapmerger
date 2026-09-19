@@ -32,7 +32,13 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.browser, ...globals.worker } },
   },
   {
-    files: ['tools/**/*.ts', 'tests/**/*.ts', 'vite.config.ts'],
+    files: [
+      'tools/**/*.ts',
+      'tests/**/*.ts',
+      'e2e/**/*.ts',
+      'vite.config.ts',
+      'playwright.config.ts',
+    ],
     ignores: ['tools/spike/web/**'],
     languageOptions: { globals: globals.node },
   },

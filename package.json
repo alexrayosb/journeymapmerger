@@ -21,7 +21,9 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "fixtures": "node tools/make-fixtures.ts",
     "spike": "node tools/spike/run.ts",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "test:e2e": "playwright test",
+    "test:e2e:live": "E2E_BASE_URL=https://journeymapmerger.alexrayosbcode.workers.dev playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
