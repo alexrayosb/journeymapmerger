@@ -19,7 +19,7 @@ import { ArchiveWriter } from '../zip/writer.ts';
 import { el } from './dom.ts';
 import { formatBytes, formatInt } from './format.ts';
 import { renderInstructions } from './instructions.ts';
-import { createSidePicker } from './side-picker.ts';
+import { createMapPicker } from './map-picker.ts';
 
 const DEFAULT_IN_MEMORY_WARN_BYTES = 1e9;
 
@@ -30,8 +30,8 @@ export function mountMergeForm(container: HTMLElement): void {
   const warnAbove =
     Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_IN_MEMORY_WARN_BYTES;
 
-  const sideA = createSidePicker('a', 'Map A', 'The merged folder gets this map folder’s name.');
-  const sideB = createSidePicker('b', 'Map B', 'The other map.');
+  const sideA = createMapPicker('a', 'Map A', 'The merged folder gets this map folder’s name.');
+  const sideB = createMapPicker('b', 'Map B', 'The other map.');
 
   const priority = el('select', { id: 'priority', testId: 'priority' }, [
     el('option', { value: 'auto', textContent: 'The newer tile wins, by file date' }),

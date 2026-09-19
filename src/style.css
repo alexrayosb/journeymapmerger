@@ -124,3 +124,54 @@ h1 {
   font-size: 1rem;
   margin: 1rem 0 0.25rem;
 }
+
+#app h2 {
+  font-size: 1.35rem;
+  margin: 2rem 0 0.75rem;
+}
+
+#preview .controls select,
+#preview .controls button {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+}
+
+#preview .coords {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewer {
+  position: relative;
+  height: 520px;
+  background: #1c1f22;
+  border-radius: 6px;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.viewer:not([hidden]) {
+  display: block;
+}
+
+.map-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.map-canvas:active {
+  cursor: grabbing;
+}
+
+.wp-label {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  white-space: nowrap;
+}

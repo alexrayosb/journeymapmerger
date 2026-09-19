@@ -1,6 +1,7 @@
 /**
- * One input side: a file picker, what was found in the zip, and a folder
- * choice when the zip holds several map folders.
+ * One map input: a file picker, what was found in the zip, and a folder
+ * choice when the zip holds several map folders. Used for Map A, Map B and
+ * the preview.
  */
 import { detectWorldRoots } from '../merge/detect.ts';
 import type { WorldRoot } from '../merge/types.ts';
@@ -8,16 +9,16 @@ import { ArchiveError, openArchive, type Archive } from '../zip/reader.ts';
 import { el } from './dom.ts';
 import { formatInt } from './format.ts';
 
-export interface SideState {
+export interface MapPickerState {
   file: File | null;
   archive: Archive | null;
   roots: WorldRoot[];
   chosen: WorldRoot | null;
 }
 
-export interface SidePicker {
+export interface MapPicker {
   readonly element: HTMLFieldSetElement;
-  readonly state: SideState;
+  readonly state: MapPickerState;
   onChange(listener: () => void): void;
   setDisabled(disabled: boolean): void;
 }
@@ -27,8 +28,8 @@ const rootName = (root: WorldRoot): string => (root.name === '' ? 'zip root' : r
 const describe = (root: WorldRoot): string =>
   `${formatInt(root.tiles)} tiles, ${formatInt(root.waypoints)} waypoints, ${String(root.dims.length)} ${root.dims.length === 1 ? 'dimension' : 'dimensions'}`;
 
-export function createSidePicker(side: 'a' | 'b', title: string, hint: string): SidePicker {
-  const state: SideState = { file: null, archive: null, roots: [], chosen: null };
+export function createMapPicker(key: string, title: string, hint: string): MapPicker {
+  const state: MapPickerState = { file: null, archive: null, roots: [], chosen: null };
   const listeners: (() => void)[] = [];
   const notify = (): void => {
     for (const fn of listeners) fn();
@@ -37,11 +38,11 @@ export function createSidePicker(side: 'a' | 'b', title: string, hint: string): 
   const input = el('input', {
     type: 'file',
     accept: '.zip,application/zip',
-    id: `file-${side}`,
-    testId: `file-${side}`,
+    id: `file-${key}`,
+    testId: `file-${key}`,
   });
-  const info = el('p', { className: 'side-info', testId: `info-${side}` });
-  const rootSelect = el('select', { id: `root-${side}`, hidden: true, testId: `root-${side}` });
+  const info = el('p', { className: 'side-info', testId: `info-${key}` });
+  const rootSelect = el('select', { id: `root-${key}`, hidden: true, testId: `root-${key}` });
 
   rootSelect.addEventListener('change', () => {
     state.chosen = state.roots[Number(rootSelect.value)] ?? null;
@@ -93,10 +94,10 @@ export function createSidePicker(side: 'a' | 'b', title: string, hint: string): 
     })();
   });
 
-  const element = el('fieldset', { className: 'side', testId: `side-${side}` }, [
+  const element = el('fieldset', { className: 'side', testId: `picker-${key}` }, [
     el('legend', { textContent: title }),
     el('p', { className: 'hint', textContent: hint }),
-    el('label', { htmlFor: `file-${side}`, textContent: 'Zip file ' }),
+    el('label', { htmlFor: `file-${key}`, textContent: 'Zip file ' }),
     input,
     info,
     rootSelect,

@@ -50,7 +50,7 @@ export function patchNames(zip: Uint8Array, from: string, to: string): Uint8Arra
   return out;
 }
 
-export const toBlob = (bytes: Uint8Array): Blob => new Blob([bytes]);
+export const toBlob = (bytes: Uint8Array): Blob => new Blob([bytes.slice()]);
 
 /** True when Info-ZIP's unzip/zipinfo are installed (external verifier). */
 export function hasInfoZip(): boolean {
