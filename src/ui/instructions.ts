@@ -8,8 +8,7 @@ export function renderInstructions(): HTMLDetailsElement {
   return el('details', { className: 'howto', testId: 'howto' }, [
     el('summary', { textContent: 'How to get your map zip' }),
     el('p', {
-      textContent:
-        'Each player zips their own map folder. One of you merges the two zips here and shares the result.',
+      textContent: 'Zip each map folder you want to merge, then pick the two zips below.',
     }),
     step(
       'Find the folder.',
@@ -22,8 +21,8 @@ export function renderInstructions(): HTMLDetailsElement {
         'On macOS, right-click the folder and choose Compress. On Linux, right-click, choose Compress and pick zip.',
     ),
     step(
-      'Swap zips.',
-      'The other player does the same and sends you their zip. Zipping a folder above it, such as the whole journeymap folder, also works. Zips of several gigabytes are expected.',
+      'Get the second zip the same way.',
+      'Zipping a folder above the map folder, such as the whole journeymap folder, also works. Zips of several gigabytes are expected.',
     ),
   ]);
 }

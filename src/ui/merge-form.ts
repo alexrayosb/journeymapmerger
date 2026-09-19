@@ -30,12 +30,8 @@ export function mountMergeForm(container: HTMLElement): void {
   const warnAbove =
     Number.isFinite(limitParam) && limitParam > 0 ? limitParam : DEFAULT_IN_MEMORY_WARN_BYTES;
 
-  const sideA = createSidePicker(
-    'a',
-    'Map A',
-    'Usually your own map. The merged folder gets this map folder’s name.',
-  );
-  const sideB = createSidePicker('b', 'Map B', 'The other player’s map.');
+  const sideA = createSidePicker('a', 'Map A', 'The merged folder gets this map folder’s name.');
+  const sideB = createSidePicker('b', 'Map B', 'The other map.');
 
   const priority = el('select', { id: 'priority', testId: 'priority' }, [
     el('option', { value: 'auto', textContent: 'The newer tile wins, by file date' }),

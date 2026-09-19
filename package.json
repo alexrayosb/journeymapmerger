@@ -2,7 +2,7 @@
   "name": "journeymapmerger",
   "private": true,
   "version": "0.0.0",
-  "description": "Merge two players' JourneyMap map archives into one, entirely in the browser.",
+  "description": "Merge two JourneyMap map archives into one, entirely in the browser.",
   "license": "MIT",
   "type": "module",
   "engines": {

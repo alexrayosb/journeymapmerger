@@ -13,7 +13,7 @@ export function renderShell(root: HTMLElement): HTMLElement {
   const lede = document.createElement('p');
   lede.className = 'lede';
   lede.textContent =
-    'Merge two players’ JourneyMap maps into one archive. ' +
+    'Merge two JourneyMap maps into one archive. ' +
     'Your files stay in your browser and are never uploaded.';
 
   const mount = document.createElement('section');

@@ -1,13 +1,12 @@
 # JourneyMapMerger
 
-Merge two players' [JourneyMap](https://journeymap.info/) map data from a
-GregTech: New Horizons multiplayer world into one combined map.
+Merge two [JourneyMap](https://journeymap.info/) maps of a GregTech: New
+Horizons world into one combined map.
 
-Each player zips their `journeymap/data/mp/<server>/` folder and drops both
-zips into the page. One merged archive comes out. Tiles that only one
-player explored are copied as they are. Tiles that both players explored
-are combined, with the newer one drawn over the older. Waypoints from both
-players are kept.
+Zip each `journeymap/data/mp/<server>/` folder and drop both zips into the
+page. One merged archive comes out. Tiles that only one map has are copied
+as they are. Tiles that both maps have are combined, with the newer one
+drawn over the older. Waypoints from both maps are kept.
 
 Everything runs in your own browser. The zips are never uploaded. The site
 is just static files with no server-side code.
