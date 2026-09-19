@@ -51,6 +51,8 @@ test('merges two maps, downloads the archive, and never talks to another host', 
   );
   await expect(summary).toContainText(`${String(expected.uniqueWaypoints)} waypoints`);
   await expect(summary).toContainText('rename your current folder');
+  await expect(page.getByTestId('progress')).toBeHidden();
+  await expect(page.getByTestId('cancel')).toBeHidden();
 
   expect(await countEntries(saved)).toBe(expected.uniqueTiles + expected.uniqueWaypoints + 1);
 

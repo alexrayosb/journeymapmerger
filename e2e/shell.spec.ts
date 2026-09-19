@@ -14,6 +14,10 @@ test('the page renders the shell and the form with no errors', async ({ page }) 
   await expect(page.getByTestId('file-a')).toBeVisible();
   await expect(page.getByTestId('file-b')).toBeVisible();
   await expect(page.getByTestId('merge')).toBeDisabled();
+  await expect(page.getByTestId('progress')).toBeHidden();
+  await expect(page.getByTestId('cancel')).toBeHidden();
+  await expect(page.getByTestId('warning')).toBeHidden();
+  await expect(page.getByTestId('summary')).toBeHidden();
   expect(errors).toEqual([]);
 });
 

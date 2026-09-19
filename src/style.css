@@ -96,7 +96,8 @@ h1 {
   font-size: 0.95rem;
 }
 
-.merge-form progress {
+/* :not([hidden]) keeps the hidden attribute winning over display: block. */
+.merge-form progress:not([hidden]) {
   display: block;
   width: 100%;
   margin: 0.5rem 0;
