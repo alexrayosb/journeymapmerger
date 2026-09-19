@@ -13,7 +13,8 @@
  */
 import { chromium, firefox } from '@playwright/test';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createServer } from 'vite';
 
@@ -61,12 +62,18 @@ async function main(): Promise<void> {
   rmSync(ours, { force: true });
 
   const launcher = browserName === 'firefox' ? firefox : chromium;
-  const browser = await launcher.launch({
+  // A persistent (on-disk) profile: Playwright's default context is
+  // incognito-like and keeps Blob storage in memory only, so a multi-GB
+  // in-memory archive fails there but not in a normal browser window.
+  const profileDir = mkdtempSync(path.join(os.tmpdir(), `jm-verify-${browserName}-`));
+  const context = await launcher.launchPersistentContext(profileDir, {
     headless: true,
+    acceptDownloads: true,
     ...(browserName === 'chromium' ? { channel: 'chromium' } : {}),
   });
+  const version = context.browser()?.version() ?? 'unknown';
   try {
-    const page = await browser.newPage({ acceptDownloads: true });
+    const page = context.pages()[0] ?? (await context.newPage());
     page.on('pageerror', (e) => {
       console.error('[pageerror]', e.message);
     });
@@ -92,23 +99,60 @@ async function main(): Promise<void> {
     await page.locator('#priority').selectOption(priority);
 
     const t0 = Date.now();
+    // Report what the page says as it goes, so a stall is diagnosable.
+    let lastStatus = '';
+    const statusPoll = setInterval(() => {
+      void page
+        .locator('.status')
+        .last()
+        .textContent()
+        .then((text) => {
+          if (text && text !== lastStatus) {
+            lastStatus = text;
+            console.log(`  [${((Date.now() - t0) / 1000).toFixed(0)}s] ${text}`);
+          }
+        })
+        .catch(() => undefined);
+    }, 2000);
     const downloadPromise = page.waitForEvent('download', { timeout: 15 * 60_000 });
-    await page.getByRole('button', { name: 'Merge' }).click();
-    const download = await downloadPromise;
-    await download.saveAs(ours);
-    await page
+    const failurePromise = page
+      .locator('.status')
+      .filter({ hasText: /^Merge failed/ })
+      .waitFor({ timeout: 15 * 60_000 })
+      .then(() => 'failed' as const);
+    // "Done." without a download within 2 minutes = the download never started.
+    const donePromise = page
       .locator('.status')
       .filter({ hasText: /^Done\./ })
-      .waitFor({ timeout: 60_000 });
-    const status = await page.locator('.status').last().textContent();
+      .waitFor({ timeout: 15 * 60_000 })
+      .then(
+        () =>
+          new Promise<'no-download'>((resolve) =>
+            setTimeout(() => {
+              resolve('no-download');
+            }, 120_000),
+          ),
+      );
+    await page.getByRole('button', { name: 'Merge' }).click();
+    const outcome = await Promise.race([downloadPromise, failurePromise, donePromise]);
+    clearInterval(statusPoll);
+    if (outcome === 'failed') {
+      const text = await page.locator('.status').last().textContent();
+      throw new Error(`page reported: ${text ?? lastStatus}`);
+    }
+    if (outcome === 'no-download')
+      throw new Error(`page reported done but no download started within 120 s: ${lastStatus}`);
+    const download = outcome;
+    await download.saveAs(ours);
     const seconds = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(
-      `${browserName} ${browser.version()} on ${target}: ${seconds} s, ${(statSync(ours).size / 1e6).toFixed(1)} MB`,
+      `${browserName} ${version} on ${target}: ${seconds} s, ${(statSync(ours).size / 1e6).toFixed(1)} MB`,
     );
-    console.log(`  page said: ${status ?? ''}`);
+    console.log(`  page said: ${lastStatus}`);
   } finally {
-    await browser.close();
+    await context.close();
     await server?.close();
+    rmSync(profileDir, { recursive: true, force: true });
   }
 
   console.log('comparing with the reference merge ...');
