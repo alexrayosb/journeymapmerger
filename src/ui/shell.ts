@@ -1,12 +1,12 @@
 /**
- * The app shell: static copy only. The upload/pairing/progress/preview
- * components mount into this as they land.
+ * The app shell: heading and one-line explanation, plus the mount point
+ * for the merge form.
  *
  * DOM is built with createElement + textContent, never innerHTML, so the
- * one day user-controlled strings (zip entry names) show up here they are
- * always rendered escaped.
+ * user-controlled strings that reach the page (zip entry names) are always
+ * rendered escaped.
  */
-export function renderShell(root: HTMLElement): void {
+export function renderShell(root: HTMLElement): HTMLElement {
   const heading = document.createElement('h1');
   heading.textContent = 'JourneyMapMerger';
 
@@ -16,9 +16,9 @@ export function renderShell(root: HTMLElement): void {
     'Merge two players’ JourneyMap maps into one archive. ' +
     'Your files stay in your browser and are never uploaded.';
 
-  const status = document.createElement('p');
-  status.className = 'status';
-  status.textContent = 'Not ready yet.';
+  const mount = document.createElement('section');
+  mount.id = 'merge';
 
-  root.replaceChildren(heading, lede, status);
+  root.replaceChildren(heading, lede, mount);
+  return mount;
 }

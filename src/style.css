@@ -45,3 +45,35 @@ h1 {
   color: var(--fg-muted);
   margin: 0;
 }
+
+.merge-form fieldset {
+  border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+  border-radius: 6px;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.merge-form legend {
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+.merge-form .side-info {
+  color: var(--fg-muted);
+  margin: 0.5rem 0 0;
+}
+
+.merge-form select,
+.merge-form button {
+  font: inherit;
+  padding: 0.35rem 0.6rem;
+}
+
+.merge-form button {
+  cursor: pointer;
+}
+
+.merge-form button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
