@@ -24,7 +24,8 @@
  *   Random "never visited" chunk holes differ per player so composites have
  *   real work to do.
  * - Nether waypoints store x/z pre-multiplied by 8 (copied verbatim, never
- *   recomputed, by the merger).
+ *   recomputed, by the merger). Every fourth waypoint has `enable: false`
+ *   (turned off in the game), which the preview hides by default.
  * - Zips are created with the system Info-ZIP `zip` (store mode, -0), i.e. a
  *   tool independent of zip.js; it switches to zip64 by itself past 4 GB.
  *
@@ -334,7 +335,8 @@ function makeWaypoint(i: number, seed: number, dim: number): Waypoint {
     r: Math.floor(hash01(i, 4, 0, seed) * 256),
     g: Math.floor(hash01(i, 5, 0, seed) * 256),
     b: Math.floor(hash01(i, 6, 0, seed) * 256),
-    enable: true,
+    // Every fourth waypoint is turned off in the game, as real data has.
+    enable: i % 4 !== 3,
     type: 'Normal',
     origin: 'JourneyMap',
     dimensions: [dim],

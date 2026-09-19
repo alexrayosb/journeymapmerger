@@ -1,6 +1,8 @@
 /**
  * Canvas map viewer: one dimension layer at a time, drag to pan, wheel to
- * zoom around the cursor, waypoint markers with the name on hover.
+ * zoom around the cursor, waypoint markers with the name on hover. Which
+ * waypoints to show is the caller's choice; ones turned off in the game
+ * (`enable: false`) are drawn hollow.
  * Block coordinates: x to the right, z down, like JourneyMap.
  */
 import { TILE_BLOCKS, tileKey, type LayerTiles, type Waypoint } from '../../merge/tiles.ts';
@@ -95,14 +97,22 @@ export class MapViewer<E extends EntryInfo = EntryInfo> {
       this.schedule();
     });
     this.layer = layer;
+    this.canvas.dataset['tilesLoaded'] = '0';
+    this.setWaypoints(waypoints);
+    this.fit();
+  }
+
+  /** Replace the markers without touching the tiles. Only this layer's dimension is drawn. */
+  setWaypoints(waypoints: readonly Waypoint[]): void {
+    const { layer } = this;
     this.markers = layer
       ? waypoints
-          .filter((wp) => wp.enabled && waypointInDim(wp, layer.dim))
+          .filter((wp) => waypointInDim(wp, layer.dim))
           .map((wp) => ({ wp, ...waypointMapPosition(wp, layer.dim) }))
       : [];
-    this.canvas.dataset['tilesLoaded'] = '0';
+    this.canvas.dataset['markers'] = String(this.markers.length);
     this.setHover(null);
-    this.fit();
+    this.schedule();
   }
 
   /** Zoom so the whole layer is visible. */
@@ -221,12 +231,21 @@ export class MapViewer<E extends EntryInfo = EntryInfo> {
       const { px, py } = this.toScreen(m.x, m.z);
       if (px < -20 || py < -20 || px > width + 20 || py > height + 20) continue;
       const [r, g, b] = m.wp.color;
+      const color = `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
       ctx.beginPath();
       ctx.arc(px, py, m === this.hovered ? MARKER_RADIUS + 2 : MARKER_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#000';
+      if (m.wp.enabled) {
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#000';
+      } else {
+        // Turned off in the game: hollow ring in the waypoint's colour.
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = color;
+      }
       ctx.stroke();
     }
   }
@@ -253,7 +272,9 @@ export class MapViewer<E extends EntryInfo = EntryInfo> {
     this.hovered = marker;
     if (marker) {
       const { px, py } = this.toScreen(marker.x, marker.z);
-      this.label.textContent = `${marker.wp.name} (${String(Math.round(marker.wp.x))}, ${String(Math.round(marker.wp.y))}, ${String(Math.round(marker.wp.z))})`;
+      this.label.textContent =
+        `${marker.wp.name} (${String(Math.round(marker.wp.x))}, ${String(Math.round(marker.wp.y))}, ${String(Math.round(marker.wp.z))})` +
+        (marker.wp.enabled ? '' : ', off in the game');
       this.label.style.left = `${String(px + 10)}px`;
       this.label.style.top = `${String(py - 10)}px`;
       this.label.hidden = false;

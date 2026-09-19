@@ -2,7 +2,13 @@
  * "Preview a map": pick any map zip (a merged one included), choose a
  * dimension and layer, pan and zoom, hover waypoints.
  */
-import { groupTiles, parseWaypoint, type LayerTiles, type Waypoint } from '../../merge/tiles.ts';
+import {
+  groupTiles,
+  parseWaypoint,
+  waypointInDim,
+  type LayerTiles,
+  type Waypoint,
+} from '../../merge/tiles.ts';
 import { indexWorld } from '../../merge/world-index.ts';
 import type { Archive, ArchiveEntry } from '../../zip/reader.ts';
 import { el } from '../dom.ts';
@@ -18,6 +24,11 @@ export function mountPreviewPanel(container: HTMLElement): void {
   );
   const dimSelect = el('select', { id: 'preview-dim', testId: 'preview-dim' });
   const layerSelect = el('select', { id: 'preview-layer', testId: 'preview-layer' });
+  const waypointSelect = el('select', { id: 'preview-waypoints', testId: 'preview-waypoints' }, [
+    el('option', { value: 'on', textContent: 'Waypoints turned on in the game' }),
+    el('option', { value: 'all', textContent: 'All waypoints' }),
+    el('option', { value: 'none', textContent: 'No waypoints' }),
+  ]);
   const fitButton = el('button', { type: 'button', textContent: 'Fit' });
   const zoomIn = el('button', { type: 'button', textContent: '+', title: 'Zoom in' });
   const zoomOut = el('button', { type: 'button', textContent: '−', title: 'Zoom out' });
@@ -29,6 +40,9 @@ export function mountPreviewPanel(container: HTMLElement): void {
     ' ',
     el('label', { htmlFor: 'preview-layer', textContent: 'Layer ' }),
     layerSelect,
+    ' ',
+    el('label', { htmlFor: 'preview-waypoints', textContent: 'Show ' }),
+    waypointSelect,
     ' ',
     fitButton,
     ' ',
@@ -44,6 +58,24 @@ export function mountPreviewPanel(container: HTMLElement): void {
   let grouped = new Map<string, Map<string, LayerTiles<ArchiveEntry>>>();
   let waypoints: Waypoint[] = [];
   let archive: Archive | null = null;
+
+  /** Waypoints to draw under the current "Show" choice. */
+  const chosenWaypoints = (): Waypoint[] => {
+    const mode = waypointSelect.value;
+    if (mode === 'none') return [];
+    return mode === 'all' ? waypoints : waypoints.filter((wp) => wp.enabled);
+  };
+
+  const updateNote = (layer: LayerTiles<ArchiveEntry>): void => {
+    const inDim = waypoints.filter((wp) => waypointInDim(wp, layer.dim));
+    const off = inDim.filter((wp) => !wp.enabled).length;
+    const shown = chosenWaypoints().filter((wp) => waypointInDim(wp, layer.dim)).length;
+    const offNote =
+      off > 0 && waypointSelect.value === 'on'
+        ? ` ${formatInt(off)} more are turned off in the game.`
+        : '';
+    note.textContent = `${formatInt(layer.tiles.size)} tiles, ${formatInt(shown)} waypoints shown in this dimension.${offNote} Drag to pan, scroll to zoom.`;
+  };
 
   const showLayer = (): void => {
     const layer = grouped.get(dimSelect.value)?.get(layerSelect.value) ?? null;
@@ -61,13 +93,16 @@ export function mountPreviewPanel(container: HTMLElement): void {
           return current.readBytes(file.entry);
         },
       },
-      waypoints,
+      chosenWaypoints(),
     );
-    const shown = waypoints.filter(
-      (wp) => wp.enabled && wp.dimensions.includes(Number(layer.dim.slice(3))),
-    ).length;
-    note.textContent = `${formatInt(layer.tiles.size)} tiles, ${formatInt(shown)} waypoints in this dimension. Drag to pan, scroll to zoom.`;
+    updateNote(layer);
   };
+
+  waypointSelect.addEventListener('change', () => {
+    const layer = grouped.get(dimSelect.value)?.get(layerSelect.value);
+    viewer.setWaypoints(chosenWaypoints());
+    if (layer) updateNote(layer);
+  });
 
   const fillLayers = (): void => {
     const layers = grouped.get(dimSelect.value);

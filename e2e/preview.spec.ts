@@ -21,11 +21,22 @@ test('previews an uploaded map: dimensions, layers, drawn tiles, zoom', async ({
   ]);
   await expect(layer.locator('option')).toHaveText(['day', 'night']);
   // The overworld day layer alone, not the whole folder (238 tiles across dims/layers).
-  await expect(page.getByTestId('preview-note')).toContainText(
-    '103 tiles, 14 waypoints in this dimension',
+  // 14 overworld waypoints in the fixture, 4 of them turned off in the game.
+  const note = page.getByTestId('preview-note');
+  await expect(note).toContainText(
+    '103 tiles, 10 waypoints shown in this dimension. 4 more are turned off in the game.',
   );
-
   const canvas = page.getByTestId('map-canvas');
+  await expect(canvas).toHaveAttribute('data-markers', '10');
+  const show = page.getByTestId('preview-waypoints');
+  await show.selectOption('all');
+  await expect(note).toContainText('14 waypoints shown');
+  await expect(canvas).toHaveAttribute('data-markers', '14');
+  await show.selectOption('none');
+  await expect(note).toContainText('0 waypoints shown');
+  await expect(canvas).toHaveAttribute('data-markers', '0');
+  await show.selectOption('on');
+
   await expect(canvas).toBeVisible();
   await expect
     .poll(async () => Number(await canvas.getAttribute('data-tiles-loaded')), { timeout: 30_000 })
