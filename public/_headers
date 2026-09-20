@@ -6,11 +6,15 @@
 # - img-src allows blob:/data: for decoded tile bitmaps and Vite-inlined
 #   small assets. worker-src allows blob: because zip.js may spin up its
 #   internal workers from blob URLs.
-# - connect-src 'self' only: the app must never talk to anything but its own
-#   origin. This header is part of the "nothing leaves your browser" promise;
-#   the end-to-end tests check it from the network layer.
+# - The ONLY third party allowed is Cloudflare Web Analytics (owner's call,
+#   2026-09-19): its beacon script comes from static.cloudflareinsights.com
+#   and reports page views to cloudflareinsights.com. It is injected by
+#   Cloudflare on the custom domain, carries no cookies and nothing about
+#   the user's files. Everything else stays same-origin; the end-to-end
+#   tests check from the network layer that no other host is contacted and
+#   that the beacon payload never contains file names.
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer

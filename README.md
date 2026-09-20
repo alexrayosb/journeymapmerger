@@ -9,7 +9,8 @@ as they are. Tiles that both maps have are combined, with the newer one
 drawn over the older. Waypoints from both maps are kept.
 
 Everything runs in your own browser. The zips are never uploaded. The site
-is just static files with no server-side code.
+is just static files with no server-side code. Cloudflare Web Analytics
+counts visits. It uses no cookies and never sees your files.
 
 Live at https://journeymapmerger.dev
 

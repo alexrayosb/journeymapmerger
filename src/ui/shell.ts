@@ -36,7 +36,7 @@ export function renderShell(root: HTMLElement): { merge: HTMLElement; preview: H
   footer.append(
     'Open source under the MIT license. Not affiliated with the JourneyMap or GTNH teams. ',
     source,
-    '.',
+    '. Cloudflare Web Analytics counts visits. It uses no cookies and never sees your files.',
   );
 
   root.replaceChildren(heading, lede, merge, preview, footer);

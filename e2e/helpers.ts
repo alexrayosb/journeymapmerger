@@ -13,6 +13,27 @@ import path from 'node:path';
 
 export const FIXTURES = path.resolve('fixtures/small');
 
+/**
+ * The one third party the site talks to: Cloudflare Web Analytics, injected
+ * by Cloudflare on the custom domain (owner's call). Script from the first
+ * host, page-view reports to the second. Nothing else may be contacted.
+ */
+export const ANALYTICS_HOSTS = [
+  'https://static.cloudflareinsights.com/',
+  'https://cloudflareinsights.com/',
+];
+
+export const isAnalytics = (url: string): boolean => ANALYTICS_HOSTS.some((h) => url.startsWith(h));
+
+/** Strings from the fixtures that must never appear in any request body. */
+export const FIXTURE_SECRETS = [
+  'GTNH~Server~1',
+  'our~gtnh~world',
+  '.png',
+  'waypoints/',
+  'journeymap/data',
+];
+
 export interface Manifest {
   expected: {
     uniqueTiles: number;
