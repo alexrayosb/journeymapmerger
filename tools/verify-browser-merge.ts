@@ -160,6 +160,9 @@ async function main(): Promise<void> {
         step('continued past the warning');
       })
       .catch(() => undefined);
+    page.on('crash', () => {
+      console.error(`  page crashed; last status: ${lastStatus}`);
+    });
     const outcome = await Promise.race([
       downloadPromise,
       failurePromise,
