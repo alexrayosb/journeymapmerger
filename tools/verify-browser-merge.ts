@@ -1,7 +1,7 @@
 /**
  * End-to-end verification of the browser merge against the reference merge.
  *
- *   node tools/verify-browser-merge.ts --preset small --browser chromium|firefox
+ *   node tools/verify-browser-merge.ts --preset small --browser chromium|firefox|webkit
  *        [--url https://journeymapmerger.alexrayosbcode.workers.dev] [--priority auto|a|b]
  *
  * Drives the real page (a local Vite dev server unless --url is given) with
@@ -11,7 +11,7 @@
  * (computed once per preset+priority and cached next to the fixtures).
  * Exit code 0 only when every file matches pixel/byte-exact.
  */
-import { chromium, firefox } from '@playwright/test';
+import { chromium, firefox, webkit } from '@playwright/test';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
@@ -61,7 +61,8 @@ async function main(): Promise<void> {
   const ours = path.join(outDir, `browser-${preset}-${browserName}-${priority}.zip`);
   rmSync(ours, { force: true });
 
-  const launcher = browserName === 'firefox' ? firefox : chromium;
+  const launcher =
+    browserName === 'firefox' ? firefox : browserName === 'webkit' ? webkit : chromium;
   // A persistent (on-disk) profile: Playwright's default context is
   // incognito-like and keeps Blob storage in memory only, so a multi-GB
   // in-memory archive fails there but not in a normal browser window.
