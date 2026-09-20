@@ -38,12 +38,17 @@ test('merges two maps, downloads the archive, and never talks to another host', 
   const downloadPromise = page.waitForEvent('download');
   await page.getByTestId('merge').click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('GTNH~Server~1-merged.zip');
+  // Linux WebKit ignores the download attribute's name for blob: URLs (Safari
+  // honours it); the page's own summary line is asserted for every engine.
+  if (test.info().project.name !== 'webkit') {
+    expect(download.suggestedFilename()).toBe('GTNH~Server~1-merged.zip');
+  }
   const saved = path.join(tmpDir(), 'merged.zip');
   await download.saveAs(saved);
 
   const summary = page.getByTestId('summary');
   await expect(summary).toBeVisible();
+  await expect(summary).toContainText('Saved GTNH~Server~1-merged.zip');
   const { expected } = manifest;
   await expect(summary).toContainText(`${expected.uniqueTiles.toLocaleString('en-US')} tiles`);
   await expect(summary).toContainText(
