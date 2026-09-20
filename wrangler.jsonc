@@ -10,6 +10,11 @@
  * `main` with `npm run check` and runs `npx wrangler deploy`. The Worker in
  * the Cloudflare dashboard must be named exactly `journeymapmerger`, or the
  * build fails. Rollback = "Rollback" on a previous version in the dashboard.
+ *
+ * Domain: journeymapmerger.dev is attached as a Custom Domain in the
+ * dashboard and managed there on purpose. Per the Wrangler docs, a config
+ * without a `routes` key leaves dashboard-managed routes alone, so do NOT
+ * add `routes` here. The workers.dev URL stays enabled as a second address.
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",

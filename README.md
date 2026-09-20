@@ -11,11 +11,15 @@ drawn over the older. Waypoints from both maps are kept.
 Everything runs in your own browser. The zips are never uploaded. The site
 is just static files with no server-side code.
 
+Live at https://journeymapmerger.dev
+
 Not affiliated with the JourneyMap or GTNH teams.
 
 ## Status
 
-Early development. Not usable yet.
+Usable. Merging and preview work in current Chrome, Edge, Firefox and
+Safari. Very large maps save best in Chrome or Edge, which write straight
+to disk.
 
 ## Develop
 

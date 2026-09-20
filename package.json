@@ -23,7 +23,7 @@
     "spike": "node tools/spike/run.ts",
     "deploy": "npm run build && wrangler deploy",
     "test:e2e": "playwright test",
-    "test:e2e:live": "E2E_BASE_URL=https://journeymapmerger.alexrayosbcode.workers.dev playwright test"
+    "test:e2e:live": "E2E_BASE_URL=https://journeymapmerger.dev playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

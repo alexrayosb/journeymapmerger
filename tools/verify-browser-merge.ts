@@ -2,7 +2,7 @@
  * End-to-end verification of the browser merge against the reference merge.
  *
  *   node tools/verify-browser-merge.ts --preset small --browser chromium|firefox|webkit
- *        [--url https://journeymapmerger.alexrayosbcode.workers.dev] [--priority auto|a|b]
+ *        [--url https://journeymapmerger.dev] [--priority auto|a|b]
  *
  * Drives the real page (a local Vite dev server unless --url is given) with
  * Playwright: picks the two fixture zips, merges with ?save=download so the
