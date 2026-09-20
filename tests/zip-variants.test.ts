@@ -2,9 +2,10 @@
  * The zip-variant matrix: the same small world packed by different tools
  * and at different nesting depths must be detected with the same result,
  * and the things that cannot be merged must be rejected with a plain
- * message. External archivers are used where installed; the Windows-made
- * shapes (Explorer, PowerShell) are reproduced with zip.js since no
- * Windows is at hand.
+ * message. External archivers are used where installed (Info-ZIP, Finder's
+ * ditto, libarchive's bsdtar, 7-Zip's 7zz); the Windows-made shapes
+ * (Explorer, PowerShell) are reproduced with zip.js since no Windows is at
+ * hand.
  */
 import { Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from '@zip.js/zip.js';
 import { execFileSync } from 'node:child_process';
@@ -164,6 +165,17 @@ describe('archivers', () => {
       await expectDetected(zip, 'finder');
     },
   );
+
+  it.skipIf(!has('7zz'))('7-Zip (7zz a -tzip), default deflate and store', async () => {
+    await expectDetected(
+      pack('7zip-deflate', '7zz', ['a', '-tzip', '-bso0', '-bsp0', 'OUT', 'journeymap']),
+      '7zip-deflate',
+    );
+    await expectDetected(
+      pack('7zip-store', '7zz', ['a', '-tzip', '-mx=0', '-bso0', '-bsp0', 'OUT', 'journeymap']),
+      '7zip-store',
+    );
+  });
 
   it.skipIf(!has('bsdtar'))('libarchive bsdtar -a (zip)', async () => {
     await expectDetected(pack('bsdtar', 'bsdtar', ['-a', '-cf', 'OUT', 'journeymap']), 'bsdtar');
