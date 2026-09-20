@@ -1,9 +1,9 @@
 # Quality gates on every push and pull request:
 #   checks  npm run check = typecheck + lint + unit tests + build
 #   e2e     Playwright against a local preview of the built site, in
-#           Chromium and Firefox (real merges of synthetic fixtures, error
-#           states, network silence). Not part of the deploy gate: the
-#           Cloudflare build image has no browsers.
+#           Chromium, Firefox and WebKit (real merges of synthetic fixtures,
+#           error states, network silence). Not part of the deploy gate:
+#           the Cloudflare build image has no browsers.
 #
 # Deploys are NOT done here. Cloudflare's git integration (Workers Builds)
 # builds `main` with the same `npm run check` and deploys the assets-only
@@ -40,7 +40,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run fixtures -- small
       - run: npm run test:e2e
         env:

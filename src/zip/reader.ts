@@ -57,6 +57,11 @@ export async function openArchive(file: Blob, name = 'archive.zip'): Promise<Arc
     throw new ArchiveError(`${name} is not a zip archive, or it is damaged.`, { cause });
   }
 
+  if (raw.some((entry) => !entry.directory && entry.encrypted)) {
+    await reader.close().catch(() => undefined);
+    throw new ArchiveError(`${name} is password protected. Remove the password and zip it again.`);
+  }
+
   const entries: ArchiveEntry[] = [];
   const skipped: SkippedEntry[] = [];
   for (const entry of raw) {

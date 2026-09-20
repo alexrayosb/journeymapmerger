@@ -37,5 +37,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    // WebKit stands in for Safari (same engine, not the same browser).
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
 });

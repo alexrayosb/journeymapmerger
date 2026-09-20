@@ -175,3 +175,15 @@ h1 {
   pointer-events: none;
   white-space: nowrap;
 }
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}
+
+footer a {
+  color: inherit;
+}

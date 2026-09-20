@@ -28,6 +28,41 @@ export function renderShell(root: HTMLElement): { merge: HTMLElement; preview: H
   previewTitle.textContent = 'Preview a map';
   preview.append(previewTitle);
 
-  root.replaceChildren(heading, lede, merge, preview);
+  const footer = document.createElement('footer');
+  const source = document.createElement('a');
+  source.href = 'https://github.com/alexrayosb/journeymapmerger';
+  source.textContent = 'Source on GitHub';
+  source.rel = 'noopener';
+  footer.append(
+    'Open source under the MIT license. Not affiliated with the JourneyMap or GTNH teams. ',
+    source,
+    '.',
+  );
+
+  root.replaceChildren(heading, lede, merge, preview, footer);
   return { merge, preview };
+}
+
+/** Everything the merge and preview need. Old browsers get a plain message instead of a broken form. */
+export function missingCapabilities(): string[] {
+  const missing: string[] = [];
+  if (typeof Worker === 'undefined') missing.push('web workers');
+  if (typeof OffscreenCanvas === 'undefined') missing.push('OffscreenCanvas');
+  if (typeof createImageBitmap === 'undefined') missing.push('createImageBitmap');
+  if (typeof WritableStream === 'undefined' || typeof TransformStream === 'undefined') {
+    missing.push('streams');
+  }
+  if (typeof DecompressionStream === 'undefined') missing.push('DecompressionStream');
+  return missing;
+}
+
+export function renderUnsupported(root: HTMLElement, missing: readonly string[]): void {
+  const heading = document.createElement('h1');
+  heading.textContent = 'JourneyMapMerger';
+  const text = document.createElement('p');
+  text.className = 'status';
+  text.textContent =
+    'This browser cannot run the merge. Use a current Chrome, Edge, Firefox, or Safari. ' +
+    `Missing here ${missing.join(', ')}.`;
+  root.replaceChildren(heading, text);
 }

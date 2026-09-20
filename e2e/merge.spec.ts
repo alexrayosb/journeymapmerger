@@ -56,7 +56,10 @@ test('merges two maps, downloads the archive, and never talks to another host', 
 
   expect(await countEntries(saved)).toBe(expected.uniqueTiles + expected.uniqueWaypoints + 1);
 
-  const offOrigin = requests.filter((r) => !r.url.startsWith(origin));
+  // blob: URLs are the page's own in-memory objects (WebKit reports their
+  // internal loads as requests); they never reach the network.
+  const sameOrigin = (u: string): boolean => u.startsWith(origin) || u.startsWith(`blob:${origin}`);
+  const offOrigin = requests.filter((r) => !sameOrigin(r.url));
   const withBody = requests.filter((r) => r.method !== 'GET' || r.body);
   expect(offOrigin).toEqual([]);
   expect(withBody).toEqual([]);
