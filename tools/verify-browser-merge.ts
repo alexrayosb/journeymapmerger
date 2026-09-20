@@ -81,26 +81,37 @@ async function main(): Promise<void> {
       if (m.type() === 'error') console.error('[console]', m.text());
     });
     const target = `${url.replace(/\/$/, '')}/?save=download`;
+    const tStart = Date.now();
+    const step = (what: string): void => {
+      console.log(`  [${((Date.now() - tStart) / 1000).toFixed(1)}s] ${what}`);
+    };
     await page.goto(target);
+    step('page loaded');
     await page.setInputFiles('#file-a', zipA);
+    step('A selected');
     await page.setInputFiles('#file-b', zipB);
-    await page
-      .locator('fieldset')
-      .nth(0)
-      .locator('.side-info')
-      .filter({ hasText: /Map folder|Pick one/ })
+    step('B selected');
+    const infoA = page.locator('fieldset').nth(0).locator('.side-info');
+    const infoB = page.locator('fieldset').nth(1).locator('.side-info');
+    await infoA
+      .filter({ hasText: /Map folder|Pick one|not a zip|No JourneyMap|Could not/ })
       .waitFor();
-    await page
-      .locator('fieldset')
-      .nth(1)
-      .locator('.side-info')
-      .filter({ hasText: /Map folder|Pick one/ })
+    step(`A read: ${(await infoA.textContent()) ?? ''}`);
+    await infoB
+      .filter({ hasText: /Map folder|Pick one|not a zip|No JourneyMap|Could not/ })
       .waitFor();
+    step(`B read: ${(await infoB.textContent()) ?? ''}`);
     await page.locator('#priority').selectOption(priority);
 
     const t0 = Date.now();
     // Report what the page says as it goes, so a stall is diagnosable.
     let lastStatus = '';
+    let lastChange = Date.now();
+    let stalled: ((reason: 'stalled') => void) | undefined;
+    const stallPromise = new Promise<'stalled'>((resolve) => {
+      stalled = resolve;
+    });
+    const STALL_MS = 3 * 60_000;
     const statusPoll = setInterval(() => {
       void page
         .locator('.status')
@@ -109,7 +120,10 @@ async function main(): Promise<void> {
         .then((text) => {
           if (text && text !== lastStatus) {
             lastStatus = text;
+            lastChange = Date.now();
             console.log(`  [${((Date.now() - t0) / 1000).toFixed(0)}s] ${text}`);
+          } else if (Date.now() - lastChange > STALL_MS) {
+            stalled?.('stalled');
           }
         })
         .catch(() => undefined);
@@ -134,8 +148,29 @@ async function main(): Promise<void> {
           ),
       );
     await page.getByRole('button', { name: 'Merge' }).click();
-    const outcome = await Promise.race([downloadPromise, failurePromise, donePromise]);
+    // On the in-memory path a merge over ~1 GB shows the size warning first;
+    // a user clicks Continue, so does this.
+    const warning = page.getByTestId('warning');
+    void warning
+      .waitFor({ state: 'visible', timeout: 10_000 })
+      .then(async () => {
+        step(`size warning shown: ${((await warning.textContent()) ?? '').slice(0, 80)}...`);
+        await page.getByTestId('continue').click();
+        step('continued past the warning');
+      })
+      .catch(() => undefined);
+    const outcome = await Promise.race([
+      downloadPromise,
+      failurePromise,
+      donePromise,
+      stallPromise,
+    ]);
     clearInterval(statusPoll);
+    if (outcome === 'stalled') {
+      throw new Error(
+        `no progress for ${String(STALL_MS / 60_000)} min; page stuck at: ${lastStatus}`,
+      );
+    }
     if (outcome === 'failed') {
       const text = await page.locator('.status').last().textContent();
       throw new Error(`page reported: ${text ?? lastStatus}`);

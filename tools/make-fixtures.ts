@@ -5,6 +5,7 @@
  *
  * Presets (see PRESETS below):
  *   small  two ~200-tile-file inputs, realistic tile entropy, heavy overlap
+ *   medium two ~1,400-tile-file inputs (~1 GB output), for the in-memory path
  *   big    two ~5,000-tile-file inputs, realistic entropy, ~1/3 overlap
  *   zip64  input A alone exceeds 4 GB (noise tiles ~1 MB each) so both the
  *          input and the merged output need zip64
@@ -93,6 +94,33 @@ const PRESETS: Record<string, Preset> = {
       endRadius: 1,
       layers: ['day', 'night'],
       waypoints: 10,
+      tint: [14, -4, -10],
+    },
+  },
+  medium: {
+    seed: 1502,
+    entropy: 'realistic',
+    sharedWaypoints: 8,
+    a: {
+      folder: 'GTNH~Server~1',
+      zipRoot: 'journeymap/data/mp/',
+      center: [0, 0],
+      radius: 14,
+      netherRadius: 4,
+      endRadius: 2,
+      layers: ['day', 'night'],
+      waypoints: 30,
+      tint: [0, 0, 0],
+    },
+    b: {
+      folder: 'our~gtnh~world~10~0~0~5~',
+      zipRoot: '',
+      center: [15, 6],
+      radius: 14,
+      netherRadius: 4,
+      endRadius: 2,
+      layers: ['day', 'night'],
+      waypoints: 24,
       tint: [14, -4, -10],
     },
   },
