@@ -4,9 +4,11 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
   FIXTURES,
+  FIXTURE_SECRETS,
   countEntries,
   ensureSmallFixtures,
   hasInfoZip,
+  isAnalytics,
   loadBothMaps,
   tmpDir,
   type Manifest,
@@ -62,12 +64,17 @@ test('merges two maps, downloads the archive, and never talks to another host', 
   expect(await countEntries(saved)).toBe(expected.uniqueTiles + expected.uniqueWaypoints + 1);
 
   // blob: URLs are the page's own in-memory objects (WebKit reports their
-  // internal loads as requests); they never reach the network.
+  // internal loads as requests); they never reach the network. Cloudflare
+  // Web Analytics is the one allowed third party, and its reports must not
+  // carry anything from the user's files.
   const sameOrigin = (u: string): boolean => u.startsWith(origin) || u.startsWith(`blob:${origin}`);
-  const offOrigin = requests.filter((r) => !sameOrigin(r.url));
-  const withBody = requests.filter((r) => r.method !== 'GET' || r.body);
+  const offOrigin = requests.filter((r) => !sameOrigin(r.url) && !isAnalytics(r.url));
+  const withBody = requests.filter((r) => (r.method !== 'GET' || r.body) && !isAnalytics(r.url));
   expect(offOrigin).toEqual([]);
   expect(withBody).toEqual([]);
+  for (const r of requests.filter((x) => isAnalytics(x.url) && x.body)) {
+    for (const secret of FIXTURE_SECRETS) expect(r.body).not.toContain(secret);
+  }
 
   test.skip(!hasInfoZip(), 'reference comparison needs Info-ZIP');
   const reference = path.join(FIXTURES, 'reference-auto.zip');

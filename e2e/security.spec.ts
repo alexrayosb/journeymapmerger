@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
-import { tmpDir, writeZip } from './helpers.ts';
+import { isAnalytics, tmpDir, writeZip } from './helpers.ts';
 
 test('a hostile folder name from a zip is rendered as text, never as markup', async ({ page }) => {
   const evil = '<img src=x onerror=alert(1)>~server';
@@ -21,7 +21,7 @@ test('a hostile folder name from a zip is rendered as text, never as markup', as
   expect(dialogs).toEqual([]);
 });
 
-test('the page loads only same-origin resources and has the footer notice', async ({
+test('the page loads only same-origin resources plus Cloudflare Web Analytics, and has the footer notice', async ({
   page,
   baseURL,
 }) => {
@@ -30,7 +30,9 @@ test('the page loads only same-origin resources and has the footer notice', asyn
   page.on('request', (r) => requests.push(r.url()));
   await page.goto('/');
   await expect(page.locator('footer')).toContainText('Not affiliated');
-  expect(requests.filter((u) => !u.startsWith(origin) && !u.startsWith(`blob:${origin}`))).toEqual(
-    [],
+  await expect(page.locator('footer')).toContainText('Web Analytics counts visits');
+  const others = requests.filter(
+    (u) => !u.startsWith(origin) && !u.startsWith(`blob:${origin}`) && !isAnalytics(u),
   );
+  expect(others).toEqual([]);
 });
